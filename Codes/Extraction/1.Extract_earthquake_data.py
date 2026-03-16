@@ -19,11 +19,11 @@ from joblib import Parallel, delayed
               
 xml_file= read_inventory('/raid4/tpo21/scripts/tom_mega_comb_april_24.xml')
 
-
-directories= ['/raid5/Iceland/data/ARCHIVE/2015','/raid5/Iceland/data/ARCHIVE/2016','/raid5/Iceland/data/ARCHIVE/2017', '/raid5/Iceland/data/ARCHIVE/2018', '/raid5/Iceland/data/ARCHIVE/2019', '/raid5/Iceland/data/ARCHIVE/2020', '/raid5/Iceland/data/ARCHIVE/2021'] 
+#Data is found in many different directories
+directories= ['/raid5/Iceland/data/ARCHIVE/2015','/raid5/Iceland/data/ARCHIVE/2016','/raid5/Iceland/data/ARCHIVE/2017', '/raid5/Iceland/data/ARCHIVE/2018', '/raid5/Iceland/data/ARCHIVE/2019', '/raid5/Iceland/data/ARCHIVE/2020', '/raid5/Iceland/data/ARCHIVE/2021', '/raid5/Iceland/data/ARCHIVE/2022', '/raid5/Iceland/data/ARCHIVE/2023', '/raid5/Iceland/data/ARCHIVE/2024', '/raid5/Iceland/data/ARCHIVE/2025', '/raid5/Iceland/data/SERVICES/2022/IMO_DATA/IMO_MAIN_SSD-CAR-4/PROC_MSEED/2022', '/raid5/Iceland/data/SERVICES/2023/AUGUST_HIGHLANDS/PROC_MSEED/2022', '/raid5/Iceland/data/SERVICES/2023/AUGUST_HIGHLANDS/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2023/JULY_ASKJA/PROC_MSEED/2022', /raid5/Iceland/data/SERVICES/2023/JULY_ASKJA/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2023/SEPTEMBER_HIGHLANDS/PROC_MSEED/2022', '/raid5/Iceland/data/SERVICES/2023/SEPTEMBER_HIGHLANDS/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2023/NOVEMBER_VONARSKARD/PROC_MSEED/2022', '/raid5/Iceland/data/SERVICES/2023/NOVEMBER_VONARSKARD/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/GLACIER/SEPTEMBER_2024/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/GLACIER/SEPTEMBER_2024/PROC_MSEED/2024', '/raid5/Iceland/data/SERVICES/2024/JULY_HIGHLANDS/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/JULY_HIGHLANDS/PROC_MSEED/2024', '/raid5/Iceland/data/SERVICES/2024/AUGUST_HIGHLANDS/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/AUGUST_HIGHLANDS/PROC_MSEED/2024', '/raid5/Iceland/data/SERVICES/2024/OCT_VONARSKARD/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/OCT_VONARSKARD/PROC_MSEED/2024', '/raid5/Iceland/data/SERVICES/2024/IMO_DATA/PROC_MSEED/2023', '/raid5/Iceland/data/SERVICES/2024/IMO_DATA/PROC_MSEED/2024']
 irisclient = IRISClient("IRIS")
 dataclient = IRISClient("IRIS")
-#do the same thing for the 2024 and 2025 data. 
+
 
 def Extract_data_and_refine(directory):
 #define the parameters for the events
@@ -38,7 +38,6 @@ def Extract_data_and_refine(directory):
     pattern = r'^[^_]+_[^_]+_([^_]+)_([^_]+)\.m$' #to extract the name
     stations_to_use= pd.read_csv('/raid2/cg812/Stations_to_use.csv', header=None)
 
-    
     for i in directory:
         print(f"\n📁 Searching in: {directory}")
         for moment in  glob.glob(i + '/*'):
@@ -48,9 +47,9 @@ def Extract_data_and_refine(directory):
                 filenameextract= os.path.basename(filename)
                 match= re.search(pattern, filenameextract)
                 sta_code= match.group(1)  #to extract the name I want (the station code)
-                match_exists = (stations_to_use == sta_code).any().any()
+                match_exists = (stations_to_use == sta_code).any().any() #Check whether its one of the stations I want to use
                 if match_exists:
-                    direc= '/raid2/cg812/Raw_data/' + sta_code 
+                    direc= '/raid2/cg812/Earthquake_data/' + sta_code 
                     if not os.path.exists(direc):
                         os.makedirs(direc)
                     
@@ -65,14 +64,14 @@ def Extract_data_and_refine(directory):
                 
                     else:
                         print(f"Station {sta_code} not found in inventory, skipping.")
-                
+
                     row = stations_to_use[stations_to_use.iloc[:, 0] == sta_code]
                     sta_latitude= row.iloc[0,1]
                     sta_longitude= row.iloc[0,2]
                     mintime= sta[0].stats.starttime
                     maxtime= sta[0].stats.endtime
                 
-            
+                    #Extract any events that occured that day recorded in the IRIS seismic catalogue
                     try:
                         cat = irisclient.get_events(
                         latitude= sta_latitude,
@@ -100,16 +99,17 @@ def Extract_data_and_refine(directory):
                             if os.path.exists(filename):
                                 print("Already processed:", filename)
                                 continue
-                            
-                              # try:
-                               #     seis.remove_response(xml_file)
-                               # except:
-                                #    print('Couldnt remove response')
-                                 #   direc= '/raid2/cg812/2015_No_response/' + sta_code 
-                                  #  if not os.path.exists(direc):
-                                   #     os.makedirs(direc)
-                                    #filename = os.path.join(direc, seis[0].stats.starttime.strftime("%Y%m%dT%H%M%S") + f".{seis[0].stats.channel}.PICKLE")
-                                    #continue
+
+                          #Try to remove the seismometer response (there isn't always appropriate ones in the xml file)
+                               try:
+                                    seis.remove_response(xml_file)
+                                except:
+                                    print('Couldnt remove response')
+                                    direc= '/raid2/cg812/2015_No_response/' + sta_code 
+                                    if not os.path.exists(direc):
+                                        os.makedirs(direc)
+                                    filename = os.path.join(direc, seis[0].stats.starttime.strftime("%Y%m%dT%H%M%S") + f".{seis[0].stats.channel}.PICKLE")
+                                    continue
                             
                             
                             else:   
@@ -161,49 +161,6 @@ def Extract_data_and_refine(directory):
                         
                     except:
                         do_nothing= 'do nothing'
-
-            #if len(stack)>0:
-                #fig, ax = plt.subplots(figsize=(10, 8))
-                #scale = 0.5          # amplitude scaling
-            # offset_step = 1.0    # vertical spacing between traces
-                #for i, tr in enumerate(stack):
-                    #data = tr.data.astype(float)
-                    #data /= np.max(np.abs(data))  # normalize per trace
-
-                    #npts = tr.stats.npts
-                    #dt = tr.stats.delta
-                    #starttime = tr.stats.starttime
-
-                    # Build actual time vector (in seconds relative to start of record)
-                    #time = np.arange(npts) * dt
-                    # Or absolute times if you want timestamps:
-                    # time = np.array([starttime + j * dt for j in range(npts)])
-
-            #        Vertical offset to stack traces
-                    #offset = i * offset_step
-
-                    #ax.plot(time, data * scale + offset, color="black", linewidth=0.8)
-
-
-                    # Optional: Label each trace using station/channel info
-                    #ax.text(time[-1] + 0.1, offset, f"{tr.stats.station}.{tr.stats.channel}",
-                    #va='center', fontsize=8)
-            # ax.set_xlabel("Time (s)")
-            # ax.set_ylabel("Trace Index (stacked vertically)")
-                #ax.set_title("Vertically Stacked Seismic Wiggles (MiniSEED)")
-                #ax.set_ylim(-offset_step, len(stack)*offset_step)
-                #ax.invert_yaxis()  # top trace first
-                #ax.grid(True, alpha=0.3) 
-                #starttime = stack[0].stats.starttime
-                #safe_dir = directory.replace('/', '_').replace('\\', '_')
-
-                # Format timestamp and combine safely
-                #safe_time = f"{starttime.strftime('%Y%m%dT%H%M%S')}_{safe_dir}"
-
-                # Define final save path
-                #save_path = os.path.join('/raid2/cg812/Stacks/', f"{safe_time}_stack.png")
-                
-                #plt.savefig(save_path)
 
 
     print('Finished')
