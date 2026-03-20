@@ -1,4 +1,4 @@
-#hello
+
 import numpy as np
 import glob
 import shutil
@@ -6,10 +6,8 @@ import obspy
 import os
 direc= ['/raid2/cg812/Checking_error/Gauss_2.0', '/raid2/cg812/Checking_error/Gauss_3.0', '/raid2/cg812/Checking_error/Gauss_4.0', '/raid2/cg812/Checking_error/Gauss_5.0', '/raid2/cg812/Checking_error/Gauss_6.0']
 for gauss in direc:
-    print(gauss)
     for sta in glob.glob(gauss +'/*'):
         for bin in glob.glob(sta + '/*'):
-            print(bin)
             traces= np.array(glob.glob(bin +'/*[!.png]'))
             if len(traces) == 1 or len(traces)==2:
                 filtered_traces = traces
