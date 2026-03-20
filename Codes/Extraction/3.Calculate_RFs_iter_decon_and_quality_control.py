@@ -16,6 +16,7 @@ from scipy.fftpack import fft, ifft
 from obspy.io.sac import SACTrace
 
 
+#Functions taken from Seispy, edited to output the fit, so it can be used as a quality control parameter
 def gaussFilter(dt, nft, f0):
     """
     Gaussian filter in frequency domain.
@@ -256,9 +257,6 @@ shift= 10
 hello= True
 
 fitmin = 0.60  # Minimum 60 percent of radial compoment should be fit (after reconvolving the RF with the vertical component
-noisebefore = 0.4  # There should be no peaks before the main P wave which are more than 40% of the amplitude of the Pwave
-noiseafter = 0.7  # There should be no peaks after the main P wave which are more than 70% of the amplitude of the Pwave
-minamp = 0.04  # There should be signals after the P wave which are at least 4% 
 
 directory= ['/raid2/cg812/Good_2015_earthquakes/VIFE', '/raid2/cg812/Good_2015_earthquakes/LOGR', '/raid2/cg812/Good_2015_earthquakes/NAUG', '/raid2/cg812/Good_2015_earthquakes/DREK', '/raid2/cg812/Good_2015_earthquakes/HOTT', '/raid2/cg812/Good_2015_earthquakes/DYSA', '/raid2/cg812/Good_2015_earthquakes/STOR', '/raid2/cg812/Good_2015_earthquakes/VIKS']
 def calculate_RF(station):
@@ -268,12 +266,13 @@ def calculate_RF(station):
         st= obspy.read(event)
         
         for i in f0:
-            already= os.path.join('/raid2/cg812/Transverse_RFs/Gauss_' + str(i) + '.0/', st[0].stats.station + '/' + st[0].stats.starttime.strftime("%Y%m%dT%H%M%S"))
+            already= os.path.join('/raid2/cg812/Processed_RFs/Gauss_' + str(i) + '.0/', st[0].stats.station + '/' + st[0].stats.starttime.strftime("%Y%m%dT%H%M%S"))
             if not os.path.exists(already):    
                 direc= '/raid2/cg812/Transverse_RFs/Gauss_' + str(i) + '.0/' + st[0].stats.station
                 if not os.path.exists(direc):
                         os.makedirs(direc)
-                rf = RFTrace.deconvolve(st.select(channel='**T')[0], st.select(channel='**Z')[0], method='iter',
+                #This can be modified to extract transverse receiver functions instead
+                rf = RFTrace.deconvolve(st.select(channel='**R')[0], st.select(channel='**Z')[0], method='iter',
                                 tshift=shift, f0 = i, itmax = 400, minderr = 0.001)
                 new_trace = obspy.Trace(
                         data=rf.data,
@@ -285,46 +284,25 @@ def calculate_RF(station):
                 #shift it so all peaks align, not necessarily 10 as in the seispy code
                 indm = np.argmax(np.abs(rf[0].data))
                 rf.trim(rf[0].stats.starttime + indm/20 - 5, rf[0].stats.starttime + indm/20 + 60)
-            #wlevel=0.1
 
                 fit= 1- rf[0].stats.d_error
                 print(fit)
                 indm = np.argmax(np.abs(rf[0].data)) 
 
         #Select reciever functions with good 
-                #withinrange = True if (indm > 60  and indm < 140) else False #to convert to seconds times by 20. That should be the direct P arrival, between +2 seconds or -2 seconds (with tshift being 10s, though I could make it longer?)
-                if withinrange:
                 
-                    if fit > fitmin:
-                        savepath= os.path.join(direc, st[0].stats.starttime.strftime("%Y%m%dT%H%M%S"))
-                        rf.write(savepath, format= 'PICKLE')
-                        rf.plot(outfile=savepath)
-                    else:
-                        print('Fit not large enough')
-
+                
+                if fit > fitmin:
+                    savepath= os.path.join(direc, st[0].stats.starttime.strftime("%Y%m%dT%H%M%S"))
+                    rf.write(savepath, format= 'PICKLE')
+                    rf.plot(outfile=savepath)
                 else:
-                    print('The main P arrival is not the main phase')
+                    print('Fit not large enough')
 
 
 with parallel_config(backend= 'loky', n_jobs=1, verbose=5):
     Parallel()(delayed(calculate_RF)(station) for station in directory)
 
 
-
-
-#Find the fit from the reciever functions?
-## Reconvolve with vertical component
-    #component2= np.real(st.select(channel='HHR')[0].data)
-    #component1= np.real(st.select(channel='HHZ')[0].data)
-
-    #decon= rf.data * np.sum(component1**2)
-    #conv=np.real(np.convolve(decon, component1, 'full'))
-    #conv=conv[0:len(component2)]
-    
-
-
-    
-
-#Should I also save the P time so i can use it later in Sanne's filtering code?
    
                         
