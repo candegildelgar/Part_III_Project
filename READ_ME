@@ -2,6 +2,6 @@ This repository contains the codes and data generated throughout the project.
 
 Codes are separated into different categories depending on their function, and labelled based on running order where appropiate.
 
-The data is also divided, following the same divisions as used in the report. 
+The data is also divided into the main sections discussed in the report. Unless otherwise specified, the cross-sections use the same Gaussian and smoothing parameters as described in the text: Gauss width 2 and 6 for stacks including pS, Gaussian width 2 for only-multiples stacks of the whole crust, and Gaussian width 6 for stacks of the shallow crust.
 
 The raw data of receiver functions migrated to depth was too big to include in the GitHub, but can be found at https://drive.google.com/drive/folders/1a5our8_1i8jDgZZchqIlyE-Wq4lBXuFs
